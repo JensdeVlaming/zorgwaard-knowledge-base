@@ -3,8 +3,8 @@ from __future__ import annotations
 import streamlit as st
 
 from infrastructure.llm.answering import answer_from_context
-from services.entities import list_entities
-from services.notes import search_question_matches
+from services.entity_service import list_entities
+from services.note_service import search_question_matches
 
 
 def _load_entity_data() -> dict[str, list[str]]:
@@ -12,8 +12,8 @@ def _load_entity_data() -> dict[str, list[str]]:
 
     grouped: dict[str, set[str]] = {}
     for entity in entities:
-        type_label = entity.entity_type or "Onbekend"
-        value_label = entity.canonical_value or entity.value or "Onbekend"
+        type_label = str(entity.entity_type or "Onbekend")
+        value_label = str(entity.canonical_value or entity.value or "Onbekend")
         grouped.setdefault(type_label, set()).add(value_label)
 
     return {type_label: sorted(values) for type_label, values in grouped.items()}
@@ -40,18 +40,21 @@ def render():
                 options=["Alle", *type_options],
             )
 
-            value_options = entity_data.get(chosen_type, []) if chosen_type != "Alle" else [
-                v for values in entity_data.values() for v in values
-            ]
-            selected_values = st.multiselect(
-                "Waarden",
-                options=value_options,
-                format_func=lambda value: f"{value} [{chosen_type if chosen_type != 'Alle' else next((t for t, vals in entity_data.items() if value in vals), 'Onbekend')}]",
-                key=f"entity-values-{chosen_type}",
-            )
-            selected_type = chosen_type
+            if chosen_type != "Alle":
+                value_options = entity_data.get(chosen_type, [])
+                selected_values = st.multiselect(
+                    "Waarden",
+                    options=value_options,
+                    format_func=lambda value: f"{value} [{chosen_type}]",
+                    key=f"entity-values-{chosen_type}",
+                )
+                selected_type = chosen_type
+            else:
+                selected_values = []
+                selected_type = None
+
             st.caption(
-                "Toont notities die gekoppeld zijn aan het gekozen type en alle gekozen waarden."
+                "Filter optioneel op een entiteitstype en bijbehorende waarde(s). Laat leeg voor alle notities."
             )
         else:
             st.caption("Nog geen entiteiten beschikbaar.")

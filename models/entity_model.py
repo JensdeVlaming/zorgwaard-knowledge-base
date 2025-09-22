@@ -27,7 +27,11 @@ class Entity(Base):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    notes = relationship("NoteEntity", back_populates="entity")
+    notes = relationship(
+        "NoteEntity",
+        back_populates="entity",
+        passive_deletes=True,
+    )
 
 
 class NoteEntity(Base):
@@ -58,5 +62,13 @@ class NoteEntity(Base):
         PrimaryKeyConstraint("note_id", "entity_id", name="pk_note_entity"),
     )
 
-    note = relationship("Note", back_populates="entities")
-    entity = relationship("Entity", back_populates="notes")
+    note = relationship(
+        "Note",
+        back_populates="entities",
+        passive_deletes=True,
+    )
+    entity = relationship(
+        "Entity",
+        back_populates="notes",
+        passive_deletes=True,
+    )

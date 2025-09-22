@@ -34,9 +34,25 @@ class Note(Base):
     )
 
     # Relaties
-    embedding = relationship("Embedding", back_populates="note", uselist=False)
-    entities = relationship("NoteEntity", back_populates="note")
-    tags = relationship("NoteTag", back_populates="note")
+    embedding = relationship(
+        "Embedding",
+        back_populates="note",
+        uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    entities = relationship(
+        "NoteEntity",
+        back_populates="note",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    tags = relationship(
+        "NoteTag",
+        back_populates="note",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
     __table_args__ = (
         CheckConstraint(

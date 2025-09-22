@@ -6,7 +6,7 @@ from typing import List
 
 from sqlalchemy.orm import Session
 
-from models.tags import NoteTag, Tag
+from models.tag_model import NoteTag, Tag
 
 
 def get_or_create_tag(db: Session, name: str) -> Tag:

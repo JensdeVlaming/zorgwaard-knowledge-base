@@ -40,10 +40,11 @@ def get_session():
 
 def init_db():
     # importeer modellen zodat Base.metadata gevuld wordt
-    import models.entities  # noqa: F401
-    import models.notes  # noqa: F401
-    import models.relations  # noqa: F401
-    import models.tags  # noqa: F401
+    import models.embedding_model  # noqa: F401
+    import models.entity_model  # noqa: F401
+    import models.note_model  # noqa: F401
+    import models.relation_model  # noqa: F401
+    import models.tag_model  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
     logger.info("Database tabellen aangemaakt.")

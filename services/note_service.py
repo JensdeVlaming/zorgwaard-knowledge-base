@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from collections import defaultdict
 from typing import List, Optional, Tuple
 
 from sqlalchemy.orm import joinedload
@@ -11,6 +12,25 @@ from models.embedding_model import Embedding
 from models.entity_model import Entity, NoteEntity
 from models.note_model import Note, NoteSearchResult
 from models.tag_model import NoteTag, Tag
+from services.relation_service import list_relations_for_notes
+
+
+def _format_timestamp(value) -> Optional[str]:
+    if not value:
+        return None
+    try:
+        return value.strftime("%d-%m-%Y %H:%M")
+    except AttributeError:
+        return str(value)
+
+
+RELATION_DESCRIPTORS = {
+    "supports": ("Ondersteunt", "Ondersteund door"),
+    "contradicts": ("Spreekt tegen", "Wordt tegengesproken door"),
+    "supersedes": ("Vervangt", "Vervangen door"),
+    "related": ("Gerelateerd aan", "Gerelateerd aan"),
+    "duplicate": ("Duplicaat van", "Duplicaat van"),
+}
 
 
 def create_note(
@@ -107,6 +127,43 @@ def list_notes(limit: int = 50) -> List[Note]:
 
         return notes
 
+
+def get_note(note_id: str | uuid.UUID) -> Optional[Note]:
+    """Haalt één notitie op uit de database en geeft deze los van de sessie terug."""
+    if not note_id:
+        return None
+
+    try:
+        parsed_id = uuid.UUID(str(note_id))
+    except (TypeError, ValueError):
+        return None
+
+    with get_session() as db:
+        note = db.query(Note).filter(Note.id == parsed_id).first()
+        if note:
+            db.expunge(note)
+        return note
+
+
+def delete_note(note_id: str | uuid.UUID) -> None:
+    """Verwijdert een notitie en bijbehorende gegevens."""
+    if not note_id:
+        raise ValueError("note_id is verplicht")
+
+    try:
+        parsed_id = uuid.UUID(str(note_id))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Ongeldig note_id") from exc
+
+    with get_session() as db:
+        note = db.query(Note).filter(Note.id == parsed_id).first()
+        if not note:
+            raise ValueError("Notitie niet gevonden")
+
+        db.delete(note)
+        db.commit()
+
+
 def search_notes_by_similarity(
     embedding: List[float],
     *,
@@ -200,12 +257,20 @@ def search_question_matches(
     matches: List[dict] = []
     detached_results: List[NoteSearchResult] = []
 
+    note_ids = [
+        str(result.note.id)
+        for result in raw_results
+        if getattr(result.note, "id", None)
+    ]
+    relation_context = _build_relation_metadata(note_ids)
+
     for result in raw_results:
         note = result.note
         metadata = {
             "topic": note.title,
             "summary": note.summary,
             "status": note.status,
+            "created_at": _format_timestamp(note.created_at),
             "content": note.content,
             "entities": [
                 {
@@ -216,6 +281,10 @@ def search_question_matches(
                 if link.entity
             ],
         }
+
+        relations_for_note = relation_context.get(str(note.id), [])
+        if relations_for_note:
+            metadata["relations"] = relations_for_note
 
         matches.append(
             {
@@ -228,3 +297,59 @@ def search_question_matches(
         detached_results.append(NoteSearchResult(note=note, score=result.score))
 
     return matches, detached_results
+
+
+def _build_relation_metadata(note_ids: List[str]) -> dict[str, List[dict]]:
+    relation_data: dict[str, List[dict]] = defaultdict(list)
+    if not note_ids:
+        return {}
+
+    relations = list_relations_for_notes(note_ids)
+    if not relations:
+        return {}
+
+    note_id_set = {str(note_id) for note_id in note_ids}
+
+    for relation in relations:
+        relation_type = (getattr(relation, "relation_type", "") or "").strip().lower()
+        if relation_type not in RELATION_DESCRIPTORS:
+            continue
+
+        source_id = str(getattr(relation, "source_note_id", ""))
+        target_id = str(getattr(relation, "target_note_id", ""))
+        source_note = getattr(relation, "source_note", None)
+        target_note = getattr(relation, "target_note", None)
+
+        if source_id in note_id_set:
+            descriptor = RELATION_DESCRIPTORS[relation_type][0]
+            relation_data[source_id].append(
+                {
+                    "relation_type": relation_type,
+                    "direction": "outgoing",
+                    "descriptor": descriptor,
+                    "other_id": target_id,
+                    "other_title": getattr(target_note, "title", None),
+                    "other_status": getattr(target_note, "status", None),
+                    "other_created_at": _format_timestamp(
+                        getattr(target_note, "created_at", None)
+                    ),
+                }
+            )
+
+        if target_id in note_id_set:
+            descriptor = RELATION_DESCRIPTORS[relation_type][1]
+            relation_data[target_id].append(
+                {
+                    "relation_type": relation_type,
+                    "direction": "incoming",
+                    "descriptor": descriptor,
+                    "other_id": source_id,
+                    "other_title": getattr(source_note, "title", None),
+                    "other_status": getattr(source_note, "status", None),
+                    "other_created_at": _format_timestamp(
+                        getattr(source_note, "created_at", None)
+                    ),
+                }
+            )
+
+    return relation_data

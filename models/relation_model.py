@@ -14,7 +14,7 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import backref, relationship
 
 from core.db_client import Base
 
@@ -57,8 +57,18 @@ class NoteRelation(Base):
     )
 
     # Relaties naar Note
-    source_note = relationship("Note", foreign_keys=[source_note_id], backref="relations_out")
-    target_note = relationship("Note", foreign_keys=[target_note_id], backref="relations_in")
+    source_note = relationship(
+        "Note",
+        foreign_keys=[source_note_id],
+        backref=backref("relations_out", passive_deletes=True),
+        passive_deletes=True,
+    )
+    target_note = relationship(
+        "Note",
+        foreign_keys=[target_note_id],
+        backref=backref("relations_in", passive_deletes=True),
+        passive_deletes=True,
+    )
 
 class RelationSuggestion(BaseModel):
     note_id: str

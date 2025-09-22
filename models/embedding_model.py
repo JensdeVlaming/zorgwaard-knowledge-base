@@ -30,4 +30,8 @@ class Embedding(Base):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    note = relationship("Note", back_populates="embedding")
+    note = relationship(
+        "Note",
+        back_populates="embedding",
+        passive_deletes=True,
+    )

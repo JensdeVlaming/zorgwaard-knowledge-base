@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import streamlit as st
-from services.relations import create_relation_entry, suggest_relations_for_embedding
 
 from infrastructure.llm import entities
 from infrastructure.llm.llm_utils import embed_text
-from services import summaries
 from services.note_service import create_note
+from services.relation_service import (
+    create_relation_entry,
+    suggest_relations_for_embedding,
+)
+from services.summary_service import summarize
 
 DEFAULT_RELATION_LABEL = "Geen relatie"
 
@@ -72,7 +75,18 @@ def render():
                         "Relatie",
                         RELATION_TYPE_OPTIONS,
                         key=choice_key,
-                        help="Kies het type relatie of laat op 'geen' staan",
+                    )
+                    st.markdown(
+                        """
+                        <div style='line-height:1.2; font-size:0.9em; color:gray; margin-bottom:10px;'>
+                        <b>Ondersteunt</b> – bevestigt of versterkt andere notitie (bv. handleiding bevestigt procedure)<br>
+                        <b>Spreekt tegen</b> – inhoud is tegenstrijdig (bv. A zegt RAM IT, B zegt Zorgwaard)<br>
+                        <b>Vervangt</b> – nieuwe versie vervangt de oude (bv. Knox v3 vervangt Knox v2)<br>
+                        <b>Gerelateerd</b> – zelfde thema, geen bewijs (bv. Knox-account vs MFA-procedure)<br>
+                        <b>Duplicaat</b> – inhoud (bijna) hetzelfde
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
                     )
 
     if st.button("Opslaan", type="primary"):
@@ -80,7 +94,7 @@ def render():
             st.warning("Titel, inhoud en auteur zijn verplicht.")
             return
 
-        summary = summaries.summarize(content)
+        summary = summarize(content)
         ent_suggestions = entities.suggest_entities(content)
         embedding_for_note = content_embedding or embed_text(content)
 
@@ -184,5 +198,5 @@ def _reset_form_state():
         st.session_state.pop(cache_key, None)
 
     for key in list(st.session_state.keys()):
-        if key.startswith("relation-choice-"):
+        if isinstance(key, str) and key.startswith("relation-choice-"):
             st.session_state.pop(key, None)
