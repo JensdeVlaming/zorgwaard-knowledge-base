@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
-from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
@@ -17,7 +16,6 @@ class Settings:
     db_password: str
     db_host: str = "localhost"
     db_port: int = 5432
-    database_url_override: str | None = None
 
     # OpenAI
     openai_api_key: str
@@ -34,8 +32,6 @@ class Settings:
 
     @property
     def database_url(self) -> str:
-        if self.database_url_override:
-            return self.database_url_override
         return f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
 
 
@@ -49,29 +45,17 @@ def _require_env(key: str) -> str:
 @lru_cache
 def get_settings() -> Settings:
     s = Settings()
-    database_url = os.getenv("DATABASE_URL")
 
-    if database_url:
-        s.database_url_override = database_url
-        parsed = urlparse(database_url)
+    # Database
+    s.db_name = os.getenv("DB_NAME", s.db_name)
+    s.db_user = _require_env("DB_USER")
+    s.db_password = _require_env("DB_PASSWORD")
+    s.db_host = os.getenv("DB_HOST", s.db_host)
+    s.db_port = int(os.getenv("DB_PORT", s.db_port))
 
-        if parsed.username:
-            s.db_user = parsed.username
-        if parsed.password:
-            s.db_password = parsed.password
-        if parsed.hostname:
-            s.db_host = parsed.hostname
-        if parsed.port:
-            s.db_port = int(parsed.port)
-        if parsed.path and parsed.path != "/":
-            s.db_name = parsed.path.lstrip("/")
-    else:
-        s.db_name = os.getenv("DB_NAME", s.db_name)
-        s.db_user = _require_env("DB_USER")
-        s.db_password = _require_env("PGPASSWORD")
-        s.db_host = os.getenv("DB_HOST", s.db_host)
-        s.db_port = int(os.getenv("DB_PORT", s.db_port))
+    # OpenAI
     s.openai_api_key = _require_env("OPENAI_API_KEY")
     s.embed_model = os.getenv("EMBED_MODEL", s.embed_model)
     s.chat_model = os.getenv("CHAT_MODEL", s.chat_model)
+
     return s
