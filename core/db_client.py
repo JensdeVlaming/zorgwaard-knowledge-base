@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import logging
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, scoped_session, sessionmaker
 
 from core.config import get_settings
+from infrastructure.migrations.runner import run_pending_migrations
 
 logger = logging.getLogger(__name__)
 
@@ -34,23 +35,10 @@ SessionLocal = scoped_session(
 # Helpers
 # -------------------------------------------------------
 def get_session():
-    """Geef een nieuwe SQLAlchemy Session (scoped)."""
+    """Return a new SQLAlchemy Session (scoped)."""
     return SessionLocal()
 
 
 def init_db():
-    # importeer modellen zodat Base.metadata gevuld wordt
-    import models.embedding_model  # noqa: F401
-    import models.entity_model  # noqa: F401
-    import models.note_model  # noqa: F401
-    import models.relation_model  # noqa: F401
-    import models.tag_model  # noqa: F401
-
-    with engine.begin() as conn:
-        try:
-            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-        except Exception:  # pragma: no cover - logging + continue
-            logger.exception("Kon pgvector extensie niet initialiseren")
-
-    Base.metadata.create_all(bind=engine)
-    logger.info("Database tabellen aangemaakt.")
+    run_pending_migrations(engine)
+    logger.info("Database migrations executed.")

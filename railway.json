@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "streamlit run app.py --server.port=$PORT --server.address=0.0.0.0",
+    "startCommand": "sh -c 'python -m infrastructure.railway.bootstrap && streamlit run app.py --server.port=$PORT --server.address=0.0.0.0'",
     "healthcheckPath": "/_stcore/health",
     "numReplicas": {
       "min": 0,
