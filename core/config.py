@@ -1,69 +1,45 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
 from functools import lru_cache
-from typing import Final
 
-from openai import OpenAI
-from pinecone import Pinecone, ServerlessSpec
+from dotenv import load_dotenv
+
+# laad .env automatisch als aanwezig
+load_dotenv()
 
 
-@dataclass(frozen=True)
 class Settings:
-    """Immutable application configuration."""
+    # Database
+    database_url: str
 
+    # OpenAI
     openai_api_key: str
-    pinecone_api_key: str
-    index_name: str = "knowledge-base"
-    embed_dim: int = 1536
-    embed_model: str = "text-embedding-3-small"
+    embed_model: str = "text-embedding-3-large"
     chat_model: str = "gpt-4o-mini"
-    pinecone_cloud: str = "aws"
-    pinecone_region: str = "us-west-2"
+
+    # Embedding dimensie (afhankelijk van model)
+    @property
+    def embed_dim(self) -> int:
+        if self.embed_model == "text-embedding-3-large":
+            return 3072
+        if self.embed_model == "text-embedding-3-small":
+            return 1536
+        return 1536  # fallback
 
 
-_REQUIRED_ENV: Final[tuple[str, str]] = ("OPENAI_API_KEY", "PINECONE_API_KEY")
+def _require_env(key: str) -> str:
+    value = os.getenv(key)
+    if not value:
+        raise RuntimeError(f"Omgevingsvariabele {key} is niet gezet")
+    return value
 
 
-@lru_cache(maxsize=1)
+@lru_cache
 def get_settings() -> Settings:
-    values = {}
-    for key in _REQUIRED_ENV:
-        value = os.getenv(key)
-        if not value:
-            raise RuntimeError(f"{key} niet gezet")
-        values[key] = value
-
-    return Settings(
-        openai_api_key=values["OPENAI_API_KEY"],
-        pinecone_api_key=values["PINECONE_API_KEY"],
-    )
-
-
-@lru_cache(maxsize=1)
-def get_openai_client() -> OpenAI:
-    settings = get_settings()
-    return OpenAI(api_key=settings.openai_api_key)
-
-
-@lru_cache(maxsize=1)
-def get_pinecone_client() -> Pinecone:
-    settings = get_settings()
-    return Pinecone(api_key=settings.pinecone_api_key)
-
-
-@lru_cache(maxsize=1)
-def get_vector_index():
-    settings = get_settings()
-    client = get_pinecone_client()
-
-    if settings.index_name not in client.list_indexes().names():
-        client.create_index(
-            name=settings.index_name,
-            dimension=settings.embed_dim,
-            metric="cosine",
-            spec=ServerlessSpec(cloud=settings.pinecone_cloud, region=settings.pinecone_region),
-        )
-
-    return client.Index(settings.index_name)
+    s = Settings()
+    s.database_url = _require_env("DATABASE_URL")
+    s.openai_api_key = _require_env("OPENAI_API_KEY")
+    s.embed_model = os.getenv("EMBED_MODEL", s.embed_model)
+    s.chat_model = os.getenv("CHAT_MODEL", s.chat_model)
+    return s

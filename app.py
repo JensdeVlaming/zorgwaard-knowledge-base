@@ -1,20 +1,19 @@
 import streamlit as st
 
-from services.knowledge import KnowledgeService
-from ui import manage_tab, question_tab, save_tab
+from ui import create_note_tab, search_tab
 
-st.set_page_config(page_title="Kennisbank Zorgwaard", layout="wide")
-st.title("Kennisbank Zorgwaard")
+st.set_page_config(page_title="Zorgwaard Kennisbank", layout="wide")
+st.title("📚 Zorgwaard Kennisbank")
 
-service = KnowledgeService()
-
-tabs = st.tabs(["Vraag", "Opslaan", "Beheer"])
+tabs = st.tabs(["Zoeken", "Notitie toevoegen", "Alle notities"])
 
 with tabs[0]:
-    question_tab.render(service)
+    search_tab.render()
 
 with tabs[1]:
-    save_tab.render(service)
+    create_note_tab.render()
 
 with tabs[2]:
-    manage_tab.render(service)
+    from ui.list_notes_tab import render
+
+    render()

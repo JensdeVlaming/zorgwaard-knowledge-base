@@ -1,4 +1,9 @@
 streamlit
+streamlit-agraph
 openai
-pinecone
+psycopg[binary]
+pgvector
 pandas
+sqlalchemy
+psycopg2-binary>=2.9
+dotenv
