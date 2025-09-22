@@ -1,0 +1,27 @@
+version: '3.9'
+
+services:
+  db:
+    image: pgvector/pgvector:0.8.1-pg17-trixie
+    environment:
+      POSTGRES_DB: zorgwaard
+      POSTGRES_USER: zorgwaard
+      POSTGRES_PASSWORD: zorgwaard
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5438}:5432"
+
+  app:
+    build: .
+    env_file:
+      - .env
+    depends_on:
+      - db
+    ports:
+      - "${STREAMLIT_SERVER_PORT:-8501}:8501"
+    volumes:
+      - .:/app
+
+volumes:
+  postgres_data:
