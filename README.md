@@ -48,6 +48,18 @@ Streamlit app for managing and querying Zorgwaard knowledge backed by PostgreSQL
 | `DATABASE_URL`    | Postgres connection string               |
 | `STREAMLIT_SERVER_PORT` | Optional Streamlit port override |
 
+## Deploying to Railway
+
+1. Install the Railway CLI and log in (`npm i -g railway && railway login`).
+2. Run `railway up` from the project root. The bundled `railway.json` provisions a serverless Streamlit service and a managed Postgres database (with the `DATABASE_URL` variable wired in automatically).
+3. Set the required secrets, for example:
+   ```bash
+   railway variables set OPENAI_API_KEY=sk-...
+   ```
+4. Deploy with `railway deploy`. In the Railway dashboard, open the `zorgwaard-kb` service settings and enable sleep/scale-to-zero (min replicas `0`, max `1`) so the app powers down when idle.
+
+The service exposes Streamlit on `/_stcore/health` for health checks, which Railway uses to determine readiness.
+
 ## Tests / Tooling
 
 Python dependencies are managed via `requirements.txt`. You can run commands inside the app container, e.g.:

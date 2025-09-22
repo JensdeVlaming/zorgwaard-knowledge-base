@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, scoped_session, sessionmaker
 
 from core.config import get_settings
@@ -45,6 +45,12 @@ def init_db():
     import models.note_model  # noqa: F401
     import models.relation_model  # noqa: F401
     import models.tag_model  # noqa: F401
+
+    with engine.begin() as conn:
+        try:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        except Exception:  # pragma: no cover - logging + continue
+            logger.exception("Kon pgvector extensie niet initialiseren")
 
     Base.metadata.create_all(bind=engine)
     logger.info("Database tabellen aangemaakt.")
