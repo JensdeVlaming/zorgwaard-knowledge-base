@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
   db:
-    image: pgvector/pgvector:0.8.1-pg17-trixie
+    image: pgvector/pgvector:pg17
     environment:
       POSTGRES_DB: zorgwaard
       POSTGRES_USER: zorgwaard
